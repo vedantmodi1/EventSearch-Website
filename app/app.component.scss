@@ -1,0 +1,26 @@
+html {
+    font-size: 20px;
+    color: white;
+    background-image: url('search/background.jpg');
+    background-attachment: fixed;
+    min-height : 100%;
+    min-width : 100%;
+    background-repeat: no-repeat;
+    background-position: center center;
+    overflow-x: hidden;
+    font: arial, sans-serif;
+    background-size: cover;
+    //height: 100vh; //Change this as per design needs
+    //width: 100%; //Change this as per design needs
+    //background-image: url('background.jpg') no-repeat center center fixed; -webkit-background-size: cover; -moz-background-size: cover; -o-background-size: cover; background-size: cover;
+  }
+
+header {
+  background: none;
+}
+
+button:focus
+{
+  border-color: white;
+  color: white;
+}

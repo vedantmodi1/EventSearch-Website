@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCA6wriJyOXWYEXzQ32NLPn8KCaKVNdyJ4"></script>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-aFq/bzH65dt+w6FI2ooMVUpc+21e0SRygnTpmBvdBgSdnuTN7QbdgL+OapgHtvPp" crossorigin="anonymous">
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha2/dist/js/bootstrap.bundle.min.js" integrity="sha384-qKXV1j0HvMUeCBQ+QVp7JcfGl760yU08IQ+GpUo5hlbpg51QRiuqHAJz8+BrxE/N" crossorigin="anonymous"></script>
+        <meta name="viewport" content="width=device-width">
+
+    </head>
+    
+    <div class="transparent">
+        <!--<mat-form-field>-->
+            <h1 style="text-align:center; font-size: calc(20px + 1.5vw); font-weight: lighter; font-family: georgia, 'Times New Roman', serif; margin-top: 25px; margin-bottom: 25px;" >Events Search</h1>
+            <hr>    
+            <form [formGroup]="searchForm" (ngSubmit)="onSubmit()">
+                <div class="form-group">
+                    <label class="label" style="color: cornflowerblue; font-size: calc(15px + 1vw);">Keyword</label>
+                    <label class="label" style = "color: red; font-size: calc(15px + 1vw)">*</label><br>
+                    
+                    <input type="text" class="form-control" formControlName="keyword" [(ngModel)]="inputText" (input)="handleInputChange()" required/>
+                    <div *ngIf="searchForm.get('keyword')?.invalid && showError">
+                        <div *ngIf="searchForm.get('keyword')?.errors?.['required']">
+                            <label type="text"  data-toggle="tooltip"  title="tooltip" style="color: black; background-color: white; padding: 4px; margin: 2px">
+                                <span style="color: white; background-color: orange; padding: 2px; margin: 2px; font-size: calc(15px + 1vw)">&#33;</span>Please fill out this field.   
+                            </label>
+                        </div>
+                    </div>
+
+                    <ul *ngIf="suggestions && suggestions.length" class="list-group">
+                        <a *ngFor="let suggestion of suggestions" href="#" class="list-group-item list-group-item-action" (click)="fillKeyword(suggestion)">{{ suggestion }}</a>
+                    </ul>
+
+                </div>
+
+                <div class="row">
+                    <div class="form-group col-md-6">
+                        <label class="label" style="color: cornflowerblue; font-size: calc(15px + 1vw)">Distance</label>
+                        <input 
+                            type="number" 
+                            class="form-control" 
+                            formControlName="distance" 
+                            min = 0 
+                            placeholder="10"
+                            (click)="emptySuggestion()"
+                        />
+                    </div>
+            
+                    <div class="form-group col-md-5">
+                        <label class="label" style="color: cornflowerblue; font-size: calc(15px + 1vw);">Category</label>
+                        <label class="label" style = "color: red; font-size: calc(15px + 1vw);">*</label><br>
+                        
+                        <select 
+                            type="text" 
+                            class="form-control"  
+                            formControlName="category"
+                            placeholder="default"
+                            (click)="emptySuggestion()">
+                            <option value = 'default' [selected]="true">Default</option>
+                            <option value="music">Music</option>
+                            <option value="sports">Sports</option>
+                            <option value="arts">Arts & Theatre</option>
+                            <option value="film">Film</option>
+                            <option value="miscellaneous">Miscellaneous</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="label" style="color: cornflowerblue; font-size: calc(15px + 1vw);">Location</label>
+                    <label class="label" style = "color: red; font-size: calc(15px + 1vw);">*</label>
+                    <input 
+                        type="text" 
+                        class="form-control"
+                        formControlName="location"
+                        (click)="emptySuggestion()"
+                    />
+                    <div *ngIf="searchForm.get('location')?.invalid && showError">
+                        <div *ngIf="searchForm.get('location')?.errors?.['required']">
+                            <label type="text"  data-toggle="tooltip" title="tooltip" style="color: black; background-color: white; padding: 2px; margin: 2px" #tooltip>
+                                <span style="color: white; background-color: orange; padding: 4px; margin: 2px; font-size: calc(15px + 1vw);">&#33;</span>Please fill out this field.   
+                            </label>
+                        </div>
+                    </div>
+                    <input class="form-check-input" type="checkbox" value="checked" id="flexCheckDefault" formControlName="auto_location" (change)="onAutoDetectLocationChange($event)">
+                    <label class="form-check-label" style="color: cornflowerblue; font-size: calc(5px + 1vw);">  Auto-Detect Location</label>
+                </div>
+                <div style="text-align: center;">
+                    <button class="btn btn-danger mx-4" style="width: calc(15px + 6vw); font-size: calc(5px + 1vw); padding-left: unset; padding-right: unset;" (click)="emptySuggestion(); onSubmit()">SUBMIT</button>
+                    <button class="btn btn-primary mx-4" style="width: calc(15px + 6vw); font-size: calc(5px + 1vw); padding-left: unset; padding-right: unset;" (click)="clear();">CLEAR</button>
+                </div>
+                
+            </form>
+        <!--</mat-form-field>-->
+    </div>
+
+    <ng-container *ngIf="events.length > 0 && show_table">
+        <!-- style = "margin-top: 50px; width: 900px; margin-left: auto; margin-right: auto; text-decoration: none; font-family: arial, sans-serif; color: black;" -->
+        <div class="table-responsive rounded" style="border-radius: 5px;">
+            <table class="table table-striped table-dark table-bordered table-hover rounded" style="border-radius: 5px; font-size: calc(10px + 1vw);">
+                <thead>
+                    <tr>
+                        <th scope="col">Date</th>
+                        <th scope="col">Icon</th>
+                        <th scope="col">Event</th>
+                        <th scope="col">Genre</th>
+                        <th scope="col">Venue</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr [class.selected]="event === selectedEvent" *ngFor="let event of events" (click)="onSelectEvent(event); onSelectVenue(event); ">
+                        <td>{{event.date}}<br>{{event.time}}</td>
+                        <td><img src ="{{event.icon}}" style="max-width:15vw"></td>
+                        <td>{{event.name}}</td>
+                        <td>{{event.genre}}</td>
+                        <td>{{event.venue}}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </ng-container>
+
+    <div *ngIf="(!events || events.length === 0) && show_table" class="text-bg-light p-3, text-danger, rounded" >
+        <div style="color:red; text-align: center; font-size: calc(20px + 1vw);">
+            No results available
+        </div>
+    </div>
+
+    
+    <div *ngIf="selectedEvent" class="transparent" style="border-radius: 0px; width: 85%; padding: 0px">
+        <button type="button" class="btn bg-transparent " (click)="backIt()" style="color: white; font-size: calc(5px + 1vw);">&#8592; Back</button>
+
+        <div class="container-fluid">
+            <div class="row justify-content-center" style="align-items: center; margin: auto;">
+                <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 4vw; margin-top: 2vw;">
+                    <span style="color: white; text-align: center; font-size: calc(20px + 1.5vw);">{{selectedName}}</span>
+            
+                        <div *ngIf="color_heart else notcolor_heart" style="display: inline-block;">
+                            <span class="material-icons" [ngStyle]="{'color':'red'}" (click)="toggleFavorite()" style="display: inline-block;">
+                                favorite
+                            </span>
+                        </div>
+                    <ng-template #notcolor_heart>
+                        <div style="display: inline-block;">
+                            <span class="material-icons" [ngStyle]="{'color':'white'}" (click)="toggleFavorite()" style="display: inline-block;">
+                                favorite
+                            </span>
+                        </div>
+                    </ng-template>
+                </div>
+            </div>
+        </div>
+        
+        
+        <!--<button (click)="toggleFavorite()">HEART</button>
+            <button (click)="allOutput()">Storage</button>
+        <button (click)="delOutput()">Delete</button>
+    
+            <ngb-carousel *ngIf="images" [interval]="0" class="no-indicators">
+                <ng-template ngbSlide *ngFor="let ssadc of spotifySearchArtistDataCard; let index = index;let isFirst = first;" [ngClass]="{active:isFirst}">
+                    <div class="row justify-content-center" style="align-items: center; margin: auto; padding-left: 5%; padding-right: 5%;">
+                            <div class="col" style="text-align: center;">
+                                <img class="rounded-circle" id = "seat_map" src="{{ssadc.image}}" style = "width:300px; height:300px;" >
+                                <br>
+                                <p style = "color: aquamarine; font-size: 30px;">{{ssadc.name}}</p>
+                            </div>
+                            <div class="col" style="text-align: center;">
+                                <div class="row justify-content-center" style="align-items: center; margin: auto;">
+                                    <div class="col" style="text-align: center;">
+                                        <p id = "date_field" style="font-size: 25px; margin-bottom: 15px; margin-top: 20p; color: aquamarine;">Popularity</p>
+                                    </div>
+                                    <div class="col" style="text-align: center;">
+                                        <p id = "artist_field" style="font-size: 25px; margin-bottom: 15px; margin-top: 20p; color: aquamarine;">Followers</p>
+                                    </div>
+                                    <div class="col" style="text-align: center;">
+                                        <p id = "venue_field" style="font-size: 25px; margin-bottom: 15px; margin-top: 20p; color: aquamarine;">Spotify Link</p>
+                                    </div>
+                                </div>
+                                <div class="row justify-content-center" style="align-items: center; margin: auto;">
+                                    <div class="col" style="text-align: center;">
+                                        <p class="pop">{{ssadc.popularity}}</p>
+                                        <mat-progress-spinner style="margin:0 auto;" value="{{ssadc.popularity}}" color="red"></mat-progress-spinner>
+                                    </div>
+                                    <div class="col" style="text-align: center;">
+                                        <p id = "date">{{ssadc.followers}}</p>
+                                    </div>
+                                    <div class="col" style="text-align: center;">
+                                        <a href="{{ssadc.link}}" target="_blank"><img src="assets/img/spotify.png" style="width: 100px"></a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row justify-content-center" style="align-items: center; margin: auto;">
+                                <div class="col" style="text-align: left;">
+                                    <p style = "color: aquamarine;">Album featuring {{ssadc.name}} {{ssadc.album_images}}</p>
+                                </div>
+                            </div>
+                            <div class="row justify-content-center" style="align-items: center; margin: auto;">
+                                    <div *ngFor="let albumimage of ssadc.album_images" class="col" style="text-align: center;">
+                                        <img id = "seat_map" src="{{albumimage}}" style = "width: 220px" >
+                                    </div>
+                            </div>
+                        </div>
+                </ng-template>
+            </ngb-carousel>
+    
+    
+    -->
+    
+
+        <nav class="navbar" style="background-color: cyan; color: white; height: 60px">
+            <mat-tab-group mat-align-tabs="center" *ngIf="selectedEvent" style="width: 100%">
+                <mat-tab label="Events" style="color: white; font-size: calc(20px + 1vw);">
+                    <div class="container" style="background-color: rgba(255, 255, 255, 0.2); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); padding-top: 5%; padding-bottom: 5%;">
+                        <ng-container *ngIf="selectedEvent" class="transparent" style="border-radius: 0px; padding: 0px">
+                            <div *ngFor="let sedc of selectedEventDataCard">
+                                <div class="row justify-content-center" style="align-items: center; margin: auto; padding-left: 5%; padding-right: 5%;">
+                                    <div class="col" style="text-align: center;">
+                                        <ng-container *ngIf="sedc.show_event_time">
+                                            <p style="font-size: calc(20px + 1vw); margin-bottom: 15px; margin-top: 20px; color: aquamarine">Date</p>
+                                            <p style="font-size: calc(20px + 1vw);">{{sedc.local_date}}</p>
+                                        </ng-container>
+                                        <ng-container *ngIf="sedc.show_event_artists">
+                                            <p style="font-size: calc(20px + 1vw); margin-bottom: 15px; margin-top: 20px; color: aquamarine">Artist/Team</p>
+                                            <a  href = "{{sedc.artists_url}}" target="_blank" style = "color: dodgerblue; text-decoration: none; word-wrap: break-word;">{{sedc.artists}}</a>
+                                        </ng-container>
+                                        <ng-container *ngIf="sedc.show_event_artists">
+                                            <p style="font-size: calc(20px + 1vw); margin-bottom: 15px; margin-top: 20px; color: aquamarine">Venue</p>
+                                            <p style="font-size: calc(20px + 1vw);">{{sedc.venues}}</p>
+                                        </ng-container>
+                                        <ng-container *ngIf="sedc.show_event_genre">
+                                            <p style="font-size: calc(20px + 1vw); margin-bottom: 15px; margin-top: 20px; color: aquamarine">Genres</p>
+                                            <p style="font-size: calc(20px + 1vw);">{{sedc.genre}}</p>
+                                        </ng-container>
+                                        <ng-container *ngIf="sedc.show_event_price_range">
+                                            <p style="font-size: calc(20px + 1vw); margin-bottom: 15px; margin-top: 20px; color: aquamarine">Price Ranges</p>
+                                            <p style="font-size: calc(20px + 1vw);">{{sedc.price_range}}</p>
+                                        </ng-container>
+                                        <ng-container *ngIf="sedc.show_event_ticket_status">
+                                            <p style="font-size: calc(20px + 1vw); margin-bottom: 15px; margin-top: 20px; color: aquamarine">Ticket Status</p>
+                                            <!--<p id = "ticket">{{sedc.ticket_status}}</p>-->
+                                            <ng-container *ngIf="sedc.ticket_status === 'onsale'">
+                                                <p id="green">On Sale</p>
+                                            </ng-container>
+                                            <ng-container *ngIf="sedc.ticket_status === 'offsale'">
+                                                <p id="red">Off Sale</p>
+                                            </ng-container>
+                                            <ng-container *ngIf="sedc.ticket_status === 'canceled'">
+                                                <p id="black">Canceled</p>
+                                            </ng-container>
+                                            <ng-container *ngIf="sedc.ticket_status === 'postponed'">
+                                                <p id="orange_p">Postponed</p>
+                                            </ng-container>
+                                            <ng-container *ngIf="sedc.ticket_status === 'rescheduled'">
+                                                <p id="ornage_r">Rescheduled</p>
+                                            </ng-container>
+
+                                        </ng-container>
+                                        <ng-container *ngIf="sedc.show_event_buy_ticket">
+                                            <p style="font-size: calc(20px + 1vw); margin-bottom: 15px; margin-top: 20px; color: aquamarine">Buy Ticket At:</p>
+                                            <a href = "{{sedc.buy_ticket}}" target="_blank" style = "color: dodgerblue; text-decoration: none; font-size: calc(20px + 1vw);">Ticketmaster</a>
+                                        </ng-container>
+                                    </div>
+                                    <div class="col" style="display: flex; align-items: center; justify-content: center">
+                                        <ng-container *ngIf="sedc.show_event_buy_ticket">
+                                                <img  class="d-block m-auto" src="{{sedc.seat_map}}" style = "width: 30vw" >
+                                        </ng-container>
+                                    </div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <a style="font-size: calc(15px + 1vw);">Share on: </a>
+                                    <a href="http://twitter.com/share?text=Check {{sedc.name}} on Ticketmaster.&url={{sedc.buy_ticket}}" target="_blank"><img src="assets/img/twitter.png" style="width: 30px"></a>
+                                    <a>  </a>
+                                    <a href="https://www.facebook.com/sharer/sharer.php?u={{sedc.buy_ticket}}&amp;src=sdkpreparse" target="_blank"><img src="assets/img/facebook.png" style="width: 30px"></a>
+                                </div>
+                            </div>
+                        </ng-container>
+                    </div>
+                </mat-tab>
+
+                <mat-tab label="Artist/Teams" style="font-size: calc(20px + 1vw);">
+                    <div class = container style="background-color: rgba(255, 255, 255, 0.2); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); padding-top: 5%; padding-bottom: 5%;">
+                        <div *ngIf="!spotifySearchArtistDataCard || spotifySearchArtistDataCard.length === 0" class="text-bg-light p-3, text-danger, rounded">
+                            <div style="color:red; text-align: center; font-size: calc(10px + 1vw);">
+                                No music related artist details to show
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="container" style="background-color: rgba(255, 255, 255, 0.2); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); ">
+                        <ng-container *ngIf="selectedEventSpotify">
+                            <ngb-carousel *ngIf="showCarousel && spotifySearchArtistDataCard.length > 1" [interval]="0" class="no-indicators">
+                                <ng-template ngbSlide *ngFor="let ssadc of spotifySearchArtistDataCard;">
+                                    <div class="row justify-content-center" style="align-items: center; margin: auto; padding-left: 5%; padding-right: 5%;">
+                                        <div class="col" style="text-align: center;">
+                                            <img class="rounded-circle" id = "seat_map" src="{{ssadc.image}}" style="width: 20vw;">
+                                            <br>
+                                            <p style = "color: aquamarine; font-size: calc(20px + 1.5vw);">{{ssadc.name}}</p>
+                                        </div>
+
+                                        
+                                            <div class="col" style="text-align: center;">
+                                                <div class="row justify-content-center" style="align-items: end; margin: auto;">
+                                                    <p style="font-size: calc(20px + 1vw);margin-bottom: 15px; margin-top: 20px; color: aquamarine;">Popularity</p>
+                                                </div>
+                                                <div class="row justify-content-center" style="align-items: start; margin: auto;">
+                                                    <p class="pop">{{ssadc.popularity}}</p>
+                                                    <mat-progress-spinner style="margin:0 auto;" value="{{ssadc.popularity}}" [diameter]="75" color="red" style="padding: 0;"></mat-progress-spinner>
+                                                </div>
+                                            </div>
+
+                                            <div class="col" style="text-align: center;">
+                                                <div class="row justify-content-center" style="align-items: end; margin: auto;">
+                                                    <p style="font-size: calc(20px + 1vw); margin-bottom: 15px; margin-top: 20px; color: aquamarine;">Followers</p>
+                                                </div>
+                                                <div class="row justify-content-center" style="align-items: start; margin: auto;">
+                                                    <p style="font-size: calc(20px + 1vw);">{{ssadc.followers}}</p>
+                                                </div>
+                                            </div>
+
+                                            <div class="col" style="text-align: center;">
+                                                <div class="row justify-content-center" style="align-items: end; margin: auto;">
+                                                    <p style="font-size: calc(20px + 1vw); margin-bottom: 15px; margin-top: 20px; color: aquamarine;">Spotify Link</p>
+                                                </div>
+                                                <div class="row justify-content-center" style="align-items: start; margin: auto;">
+                                                    <a href="{{ssadc.link}}" target="_blank"><img src="assets/img/spotify.png" style="width: 7vw;"></a>
+                                                </div>
+                                            </div>
+                                       
+                                        
+
+                                        <!--
+                                        <div class="col" style="text-align: center;">
+                                            <div class="row justify-content-center" style="align-items: center; margin: auto;">
+                                                <div class="col" style="text-align: center;">
+                                                    <p id = "date_field" style="font-size: 25px; margin-bottom: 15px; margin-top: 20p; color: aquamarine;">Popularity</p>
+                                                </div>
+                                                <div class="col" style="text-align: center;">
+                                                    <p id = "artist_field" style="font-size: 25px; margin-bottom: 15px; margin-top: 20p; color: aquamarine;">Followers</p>
+                                                </div>
+                                                <div class="col" style="text-align: center;">
+                                                    <p id = "venue_field" style="font-size: 25px; margin-bottom: 15px; margin-top: 20p; color: aquamarine;">Spotify Link</p>
+                                                </div>
+                                            </div>
+                                            <div class="row justify-content-center" style="align-items: center; margin: auto;">
+                                                <div class="col" style="text-align: center;">
+                                                    <p class="pop">{{ssadc.popularity}}</p>
+                                                    <mat-progress-spinner style="margin:0 auto;" value="{{ssadc.popularity}}" color="red"></mat-progress-spinner>
+                                                </div>
+                                                <div class="col" style="text-align: center;">
+                                                    <p id = "date">{{ssadc.followers}}</p>
+                                                </div>
+                                                <div class="col" style="text-align: center;">
+                                                    <a href="{{ssadc.link}}" target="_blank"><img src="assets/img/spotify.png" style="width: 100px"></a>
+                                                </div>
+                                            </div>
+                                        </div>-->
+                                        <div class="row justify-content-center" style="align-items: center; margin: auto;">
+                                            <div class="col" style="text-align: left;">
+                                                <p style = "color: aquamarine; font-size: calc(20px + 1vw);">Album featuring {{ssadc.name}}</p>
+                                            </div>
+                                        </div>
+                                        <div class="row justify-content-center" style="align-items: center; margin: auto;">
+                                                <div *ngFor="let albumimage of ssadc.album_images" class="col" style="text-align: center;">
+                                                    <img src="{{albumimage}}" style="width: 20vw;">
+                                                </div>
+                                        </div>
+                                    </div>
+                                </ng-template>
+                            </ngb-carousel>
+                            
+                            <div *ngIf="showCarousel && spotifySearchArtistDataCard.length === 1">
+                                <div *ngFor="let ssadc of spotifySearchArtistDataCard;">
+                                    <div class="row justify-content-center" style="align-items: center; margin: auto; padding-left: 5%; padding-right: 5%;">
+                                        <div class="col" style="text-align: center;">
+                                            <img class="rounded-circle" id = "seat_map" src="{{ssadc.image}}" style = "width: 20vw" >
+                                            <br>
+                                            <p style = "color: aquamarine; font-size: calc(20px + 1.5vw);">{{ssadc.name}}</p>
+                                        </div>
+
+                                        
+                                            <div class="col" style="text-align: center;">
+                                                <div class="row justify-content-center" style="align-items: end; margin: auto;">
+                                                    <p style="font-size: calc(20px + 1vw); margin-bottom: 15px; margin-top: 20px; color: aquamarine;">Popularity</p>
+                                                </div>
+                                                <div class="row justify-content-center" style="align-items: start; margin: auto;">
+                                                    <p class="pop">{{ssadc.popularity}}</p>
+                                                    <mat-progress-spinner style="margin:0 auto;" value="{{ssadc.popularity}}" [diameter]="75" color="red" style="padding: 0;"></mat-progress-spinner>
+                                                </div>
+                                            </div>
+
+                                            <div class="col" style="text-align: center;">
+                                                <div class="row justify-content-center" style="align-items: end; margin: auto;">
+                                                    <p style="font-size: calc(20px + 1vw); margin-bottom: 15px; margin-top: 20px; color: aquamarine;">Followers</p>
+                                                </div>
+                                                <div class="row justify-content-center" style="align-items: start; margin: auto;">
+                                                    <p style="font-size: calc(20px + 1vw);">{{ssadc.followers}}</p>
+                                                </div>
+                                            </div>
+
+                                            <div class="col" style="text-align: center;">
+                                                <div class="row justify-content-center" style="align-items: end; margin: auto;">
+                                                    <p style="font-size: calc(20px + 1vw); margin-bottom: 15px; margin-top: 20px; color: aquamarine;">Spotify Link</p>
+                                                </div>
+                                                <div class="row justify-content-center" style="align-items: start; margin: auto;">
+                                                    <a href="{{ssadc.link}}" target="_blank"><img src="assets/img/spotify.png" style="width: 7vw"></a>
+                                                </div>
+                                            </div>
+                                    
+                                        <div class="row justify-content-center" style="align-items: center; margin: auto;">
+                                            <div class="col" style="text-align: left;">
+                                                <p style = "color: aquamarine; font-size: calc(20px + 1vw);">Album featuring {{ssadc.name}}</p>
+                                            </div>
+                                        </div>
+                                        <div class="row justify-content-center" style="align-items: center; margin: auto;">
+                                                <div *ngFor="let albumimage of ssadc.album_images" class="col" style="text-align: center;">
+                                                    <img id = "seat_map" src="{{albumimage}}" style="width: 20vw;" >
+                                                </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!--
+                            <div class = "carousel slide" id="myslider" data-bs-ride="carousel">
+                                <div class="carousel-inner">
+                                    <div class="carousel-item" *ngFor="let ssadc of spotifySearchArtistDataCard; let index = index;let isFirst = first;" [ngClass]="{active:isFirst}">
+                                        <div class="row justify-content-center" style="align-items: center; margin: auto; padding-left: 5%; padding-right: 5%;">
+                                            <div class="col" style="text-align: center;">
+                                                <img class="rounded-circle" id = "seat_map" src="{{ssadc.image}}" style = "width:300px; height:300px;" >
+                                                <br>
+                                                <p style = "color: aquamarine; font-size: 30px;">{{ssadc.name}}</p>
+                                            </div>
+                                            <div class="col" style="text-align: center;">
+                                                <div class="row justify-content-center" style="align-items: center; margin: auto;">
+                                                    <div class="col" style="text-align: center;">
+                                                        <p id = "date_field" style="font-size: 25px; margin-bottom: 15px; margin-top: 20p; color: aquamarine;">Popularity</p>
+                                                    </div>
+                                                    <div class="col" style="text-align: center;">
+                                                        <p id = "artist_field" style="font-size: 25px; margin-bottom: 15px; margin-top: 20p; color: aquamarine;">Followers</p>
+                                                    </div>
+                                                    <div class="col" style="text-align: center;">
+                                                        <p id = "venue_field" style="font-size: 25px; margin-bottom: 15px; margin-top: 20p; color: aquamarine;">Spotify Link</p>
+                                                    </div>
+                                                </div>
+                                                <div class="row justify-content-center" style="align-items: center; margin: auto;">
+                                                    <div class="col" style="text-align: center;">
+                                                        <p class="pop">{{ssadc.popularity}}</p>
+                                                        <mat-progress-spinner style="margin:0 auto;" value="{{ssadc.popularity}}" color="red"></mat-progress-spinner>
+                                                    </div>
+                                                    <div class="col" style="text-align: center;">
+                                                        <p id = "date">{{ssadc.followers}}</p>
+                                                    </div>
+                                                    <div class="col" style="text-align: center;">
+                                                        <a href="{{ssadc.link}}" target="_blank"><img src="assets/img/spotify.png" style="width: 100px"></a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="row justify-content-center" style="align-items: center; margin: auto;">
+                                                <div class="col" style="text-align: left;">
+                                                    <p style = "color: aquamarine;">Album featuring {{ssadc.name}} {{ssadc.album_images}}</p>
+                                                </div>
+                                            </div>
+                                            <div class="row justify-content-center" style="align-items: center; margin: auto;">
+                                                    <div *ngFor="let albumimage of ssadc.album_images" class="col" style="text-align: center;">
+                                                        <img id = "seat_map" src="{{albumimage}}" style = "width: 220px" >
+                                                    </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button class="carousel-control-prev" type="button" data-bs-target="#myslider" data-bs-slide="prev">
+                                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                                    <span class="visually-hidden">Previous</span>
+                                </button>
+                                <button class="carousel-control-next" type="button" data-bs-target="#myslider" data-bs-slide="next">
+                                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                                    <span class="visually-hidden">Next</span>
+                                </button>
+                            </div>-->
+                            <!--
+                            <div *ngFor="let ssadc of spotifySearchArtistDataCard">
+                                <p>{{ssadc.name}}<p>
+                                <img id = "seat_map" src="{{ssadc.image}}" style = "width: 300px" >
+                                <p id = "date_field" style="font-size: 25px; margin-bottom: 15px; margin-top: 20p;">Popularity</p>
+                                <p id = "date" style = "color: cyan;">{{ssadc.popularity}}</p>
+                                <p id = "artist_field" style="font-size: 25px; margin-bottom: 15px; margin-top: 20p;">Followers</p>
+                                <p id = "date" style = "color: cyan;">{{ssadc.followers}}</p>
+                                <p id = "venue_field" style="font-size: 25px; margin-bottom: 15px; margin-top: 20p;">Spotify Link</p>
+                                <a href="{{ssadc.link}}" target="_blank">Spotify Logo</a>
+                                <p>ALBUM IMAGE {{ssadc.album_images}}</p>
+                                <div *ngFor="let albumimage of ssadc.album_images">
+                                    <img id = "seat_map" src="{{albumimage}}" style = "width: 220px" >
+                                </div>
+                            </div> -->
+                        </ng-container>
+                    </div>
+                </mat-tab>
+
+                <mat-tab label="Venue" style="font-size: calc(20px + 1vw);">
+                    <div class="container" style="background-color: rgba(255, 255, 255, 0.2); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); padding-top: 5%; padding-bottom: 5%;">
+                        <ng-container *ngIf="temp_venue" class="transparent" style="border-radius: 0px; width: 85%; padding: 0px">
+                            <div *ngFor="let svdc of selectedVenueDataCard">
+                                <div class="row justify-content-center" style="align-items: center; margin: auto; padding-left: 5%; padding-right: 5%;">
+                                    <div class="col" style="text-align: center;">
+
+                                        <ng-container *ngIf="svdc.show_venue_name">
+                                            <p style="font-size: calc(20px + 1vw); margin-bottom: 15px; margin-top: 20px; color: cyan;">Name</p>
+                                            <p style="font-size: calc(20px + 1vw);">{{svdc.name}}</p>
+                                        </ng-container>
+                                        <ng-container *ngIf="svdc.show_venue_address">
+                                            <p style="font-size: calc(20px + 1vw); margin-bottom: 15px; margin-top: 20px; color: cyan; word-wrap: break-word;">Address</p>
+                                            <p style="font-size: calc(20px + 1vw);">{{svdc.address}}</p>
+                                        </ng-container>
+                                        <ng-container *ngIf="svdc.show_venue_phone">
+                                            <p style="font-size: calc(20px + 1vw); margin-bottom: 15px; margin-top: 20px; color: cyan; word-wrap: break-word;">Phone Number</p>
+                                            <p style="font-size: calc(20px + 1vw);">{{svdc.phone}}</p>
+                                        </ng-container>
+                            
+                                    </div>
+                                    <div class="col" style="text-align: center;">
+                                        <ng-container *ngIf="svdc.show_venue_hours" >
+                                            <p style="font-size: calc(20px + 1vw); margin-bottom: 15px; margin-top: 20px; color: cyan; word-wrap: break-word;">Open Hours</p>
+                                            <div [ngClass]="showMore1 ? 'expand' : 'collapse'">
+                                                <p style="font-size: calc(20px + 1vw);">{{svdc.open_hours}}</p>
+                                            </div>
+                                            <a style="font-size: calc(20px + 1vw);" (click)="showMore1 = !showMore1">{{showMore1 ? 'Show less &#9650;' : 'Show more &#9660;'}}</a>
+                                        </ng-container>
+                                        
+                                        <ng-container *ngIf="svdc.show_venue_gen">
+                                            <p style="font-size: calc(20px + 1vw); margin-bottom: 15px; margin-top: 20px; color: cyan; word-wrap: break-word;">General Rule</p>
+                                            <div [ngClass]="showMore2 ? 'expand' : 'collapse'">
+                                                <p>{{svdc.gen_rule}}</p>
+                                            </div>
+                                            <a style="font-size: calc(20px + 1vw);" (click)="showMore2 = !showMore2">{{showMore2 ? 'Show less &#9650;' : 'Show more &#9660;'}}</a>
+                                        </ng-container>
+                                        
+                                        <ng-container *ngIf="svdc.show_venue_child"> 
+                                            <p style="font-size: calc(20px + 1vw); margin-bottom: 15px; margin-top: 20px; color: cyan; word-wrap: break-word;">Child Rule</p>
+                                            <div [ngClass]="showMore3 ? 'expand' : 'collapse'">
+                                                <p style="font-size: calc(20px + 1vw);">{{svdc.child_rule}}</p>
+                                            </div>
+                                            <a style="font-size: calc(20px + 1vw);" (click)="showMore3 = !showMore3">{{showMore3 ? 'Show less &#9650;' : 'Show more &#9660;'}}</a>
+                                        </ng-container>
+
+                                        
+                                    </div>
+                                </div>
+
+                                    
+                                
+                                <div style="text-align: center;">
+                                    <button type="button" class="btn btn-danger" (click)="openPopup()">
+                                        Show venue on Google map
+                                    </button>
+
+                                    <div class="modal" tabindex="-1" role="dialog" [ngStyle]="{'display':displayStyle}">
+                                    <div class="modal-dialog" role="document">
+                                        <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h4 class="modal-title" style="color: black;">Event Venue</h4>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="my-google-map">
+                                                <google-map [width]="300" [height]="300" [options]="mapOptions">
+                                                    <map-marker [position]="marker.position"></map-marker>
+                                                </google-map>
+                                            </div>
+                                    
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-danger" 
+                                                    (click)="closePopup()">
+                                            Close
+                                            </button>
+                                        </div>
+                                        </div>
+                                    </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </ng-container>
+                    </div>
+                </mat-tab>
+                
+            </mat-tab-group>
+        </nav>
+    </div>
+</html>
